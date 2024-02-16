@@ -10,6 +10,7 @@ import {
 } from './definitions';
 import { formatCurrency } from './utils';
 import { unstable_noStore as noStore } from 'next/cache';
+import { invoices } from './placeholder-data';
 
 export async function fetchRevenue() {
   // Add noStore() here to prevent the response from being cached.
@@ -141,19 +142,14 @@ export async function fetchInvoiceById(id: string) {
       WHERE invoices.id = ${id};
     `;
 
-    const invoice = data.rows.map((invoice) => ({
-      ...invoice,
-      // Convert amount from cents to dollars
-      amount: invoice.amount / 100,
-    }));
-
-    console.log(invoice); // Invoice is an empty array []
-    return invoice[0];
+    console.log(data.rows); // Mostrará la respuesta de la base de datos
+    return data.rows[0];
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch invoice.');
   }
 }
+
 
 export async function fetchCustomers() {
   try {
@@ -214,5 +210,23 @@ export async function getUser(email: string) {
   } catch (error) {
     console.error('Failed to fetch user:', error);
     throw new Error('Failed to fetch user.');
+  }
+}
+export async function fetchInvoicesPages(query: string): Promise<number> {
+  noStore();
+  try {
+    const totalInvoicesData = await sql`SELECT COUNT(*) FROM invoices WHERE
+      customers.name ILIKE ${`%${query}%`} OR
+      customers.email ILIKE ${`%${query}%`} OR
+      invoices.amount::text ILIKE ${`%${query}%`} OR
+      invoices.date::text ILIKE ${`%${query}%`} OR
+      invoices.status ILIKE ${`%${query}%`}`;
+
+    const totalInvoices = Number(totalInvoicesData.rows[0].count || '0');
+    const totalPages = Math.ceil(totalInvoices / ITEMS_PER_PAGE);
+    return totalPages;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Failed to fetch total invoices count.');
   }
 }
