@@ -150,7 +150,6 @@ export async function fetchInvoiceById(id: string) {
   }
 }
 
-
 export async function fetchCustomers() {
   try {
     const data = await sql<CustomerField>`
@@ -168,7 +167,6 @@ export async function fetchCustomers() {
     throw new Error('Failed to fetch all customers.');
   }
 }
-
 export async function fetchFilteredCustomers(query: string) {
   noStore();
   try {
@@ -212,21 +210,24 @@ export async function getUser(email: string) {
     throw new Error('Failed to fetch user.');
   }
 }
-export async function fetchInvoicesPages(query: string): Promise<number> {
+export async function fetchInvoicesPages(query: string) {
   noStore();
   try {
-    const totalInvoicesData = await sql`SELECT COUNT(*) FROM invoices WHERE
+    const count = await sql`SELECT COUNT(*)
+    FROM invoices
+    JOIN customers ON invoices.customer_id = customers.id
+    WHERE
       customers.name ILIKE ${`%${query}%`} OR
       customers.email ILIKE ${`%${query}%`} OR
       invoices.amount::text ILIKE ${`%${query}%`} OR
       invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}`;
+      invoices.status ILIKE ${`%${query}%`}
+  `;
 
-    const totalInvoices = Number(totalInvoicesData.rows[0].count || '0');
-    const totalPages = Math.ceil(totalInvoices / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
     return totalPages;
   } catch (error) {
     console.error('Database Error:', error);
-    throw new Error('Failed to fetch total invoices count.');
+    throw new Error('Failed to fetch total number of invoices.');
   }
 }
